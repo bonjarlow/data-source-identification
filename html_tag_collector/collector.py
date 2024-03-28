@@ -6,6 +6,7 @@ from concurrent.futures import as_completed, ThreadPoolExecutor
 import sys
 import traceback
 import multiprocessing
+import lxml.etree
 
 import requests
 from requests_html import AsyncHTMLSession
@@ -16,6 +17,8 @@ from tqdm.asyncio import tqdm
 import bs4
 from bs4 import BeautifulSoup
 import polars as pl
+import PyPDF2
+from io import BytesIO
 
 from RootURLCache import RootURLCache
 from common import get_user_agent
@@ -168,7 +171,7 @@ async def get_response(session, url, index):
             response is not None and len(response.content) > 10000000
             or content_type is not None and any(
                 filtered_type in content_type
-                for filtered_type in ["pdf", "excel", "msword", "image", "rtf", "zip", "octet", "csv", "json"]
+                for filtered_type in ["excel", "msword", "image", "rtf", "zip", "octet", "csv", "json"]
             )
             or response is not None and not response.ok
         ):
@@ -225,6 +228,42 @@ async def render_js(urls_responses):
             if DEBUG:
                 print("Rendering cancelled")
 
+def extract_pdf_text(pdf_content, max_words=500):
+    """Extracts text from a PDF file content using PyPDF2 up to a maximum word limit.
+
+    Args:
+        pdf_content (bytes): Content of the PDF file.
+        max_words (int): Maximum number of words to extract.
+
+    Returns:
+        str: Extracted text from the PDF up to the maximum word limit.
+    """
+    pdf_text = ""
+    word_count = 0
+    try:
+        pdf_reader = PyPDF2.PdfReader(BytesIO(pdf_content))
+        num_pages = len(pdf_reader.pages)
+        for page_num in range(num_pages):
+            if word_count >= max_words:
+                break
+            page = pdf_reader.pages[page_num]
+            page_text = page.extract_text()
+            # Split the text into words and count them
+            words = page_text.split()
+            word_count += len(words)
+            # Add the page text to pdf_text if the word count is within the limit
+            if word_count <= max_words:
+                pdf_text += page_text
+            else:
+                # Truncate the text to the maximum word limit
+                remaining_words = max_words - (word_count - len(words))
+                pdf_text += " ".join(words[:remaining_words])
+                break
+    except Exception as e:
+        print(f"Error extracting PDF text: {e}")
+
+    return pdf_text
+
 
 def parse_response(url_response):
     """Parses relevant HTML tags from a Response object into a dictionary.
@@ -243,7 +282,12 @@ def parse_response(url_response):
     tags["url"] = url_response["url"][0]
     tags["html_title"] = ""
     tags["meta_description"] = ""
-    tags["root_page_title"] = remove_excess_whitespace(root_url_cache.get_title(tags["url"]))
+    tags["pdf_text"] = ""
+
+    if tags["url"] is not None:
+        tags["root_page_title"] = remove_excess_whitespace(root_url_cache.get_title(tags["url"]))
+    else:
+        tags["root_page_title"] = ""
 
     if res is None:
         tags["http_response"] = -1
@@ -262,12 +306,23 @@ def parse_response(url_response):
         parser = "lxml"
     elif "xml" in content_type:
         parser = "lxml-xml"
+    elif "pdf" in content_type:    
+        # If the response is a PDF, extract text using PyPDF2
+        print("im a pdf")
+        pdf_text = extract_pdf_text(res.content)
+        tags["pdf_text"] = pdf_text
+        return tags
     else:
         return tags
 
     try:
         soup = BeautifulSoup(res.html.html, parser)
     except (bs4.builder.ParserRejectedMarkup, AssertionError, AttributeError):
+        print("Parsing error:", url_response["url"])
+        return tags
+    except lxml.etree.ParserError as e:
+        print(f"Empty document error for URL: {url_response['url']}")
+        print(e)  # Print the specific error message
         return tags
 
     if soup.title is not None and soup.title.string is not None:
@@ -394,4 +449,4 @@ if __name__ == "__main__":
         print(out_df)
 
     # Write the updated JSON data to a new file
-    out_df.write_csv("labeled-source-text.csv")
+    out_df.write_csv("labeled-source-text-quick.csv")
