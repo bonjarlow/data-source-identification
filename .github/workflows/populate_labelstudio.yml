@@ -59,8 +59,27 @@ jobs:
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "action@github.com"
+        
+        #check if actions-bot-branch exists and switch to it, else create it
+        if git show-ref --quiet refs/heads/actions-bot-branch; then
+          git checkout actions-bot-branch
+        else
+          git checkout -b actions-bot-branch
+        fi
+
         git add annotation_pipeline/data/batch_info.csv
         git add annotation_pipeline/data/cache.json
         git add annotation_pipeline/data/tag_collector/*
         git commit -m "Update batch info and collected urls & tags"
-        git push
+        git push origin actions-bot-branch
+
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "Update batch info, cache, collected urls & tags"
+        branch: actions-bot-branch
+        base: main
+        title: "Update batch info, cache, collected urls & tags"
+        body: "This PR was created automatically by GitHub Actions"
+        labels: "automated pr"
