@@ -77,14 +77,3 @@ jobs:
 
         git commit -m "Update batch info and collected urls & tags"
         git push origin actions-bot-branch
-
-    - name: Create Pull Request
-      uses: peter-evans/create-pull-request@v5
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: "Update batch info, cache, collected urls & tags"
-        branch: actions-bot-branch
-        base: main
-        title: "Update batch info, cache, collected urls & tags"
-        body: "This PR was created automatically by GitHub Actions"
-        labels: "automated pr"
