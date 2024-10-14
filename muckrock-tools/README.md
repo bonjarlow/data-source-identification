@@ -1,7 +1,7 @@
 # Muckrock Toolkit
 
 ## Description
-This repo provides tools for searching Muckrock FOIA requests, it includes scripts for downloading data from MuckRock, generating CSV files per PDAP db reqs, and automatic labeling
+This repo provides tools for searching Muckrock FOIA requests, it includes scripts for downloading data from MuckRock, generating CSV files per PDAP database requirements, and automatic labeling
 
 ## Uses
 
