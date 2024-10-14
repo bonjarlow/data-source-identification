@@ -1,7 +1,7 @@
 # Muckrock Toolkit
 
 ## Description
-This repo provides tools for searching Muckrock FOIA (Freedom of Information Act) requests, it includes scripts for downloading data from MuckRock, generating detailed CSV files, and labeling via ML.
+This repo provides tools for searching Muckrock FOIA requests, it includes scripts for downloading data from MuckRock, generating CSV files per PDAP db reqs, and automatic labeling
 
 ## Uses
 
@@ -25,4 +25,4 @@ The `get-allegheny-foias.py` script will find the jurisdiction ID for each munic
 
 ### 5. ML Labeling 
 - `muckrock-ml-labeler.py`
-- A tool for labeling MuckRock sources via our ML models hosted on HuggingFace. This script is using the fine-url-labeler model to assign 1 of 36 record type labels. At present, muckrock url's must first be run through `html-tag-collector/collector.py`. 
+- A tool for auto labeling MuckRock sources. This script is using [fine-url-classifier](https://huggingface.co/PDAP/fine-url-classifier) to assign 1 of 36 record type labels. At present, script is expecting each source to have associated header tags, provided via `html-tag-collector/collector.py`. (TODO: For muckrock sources, `collector.py` insufficient, does not grab main text of the request)  
